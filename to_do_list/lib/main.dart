@@ -1,140 +1,538 @@
-// Import library Flutter untuk UI components
 import 'package:flutter/material.dart';
 
-// Function utama yang dijalankan pertama kali
+// Model class Task
+class Task {
+  String title;
+  bool isCompleted;
+
+  Task({
+    required this.title,
+    this.isCompleted = false,
+  });
+
+  void toggle() {
+    isCompleted = !isCompleted;
+  }
+
+  @override
+  String toString() {
+    return 'Task{title: $title, isCompleted: $isCompleted}';
+  }
+}
+
 void main() {
-  // Jalankan aplikasi Flutter, dimulai dari widget MyApp
   runApp(const MyApp());
 }
 
-// Deklarasi class MyApp yang extends (turunan dari) StatelessWidget
-class MyApp extends StatefulWidget {
-  // Constructor dengan key parameter untuk best practices
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // Override function build yang WAJIB ada di setiap widget
   @override
   Widget build(BuildContext context) {
-    // Return MaterialApp sebagai root aplikasi
     return MaterialApp(
-      // Nama aplikasi (muncul di task switcher)
       title: 'Todo App Pemula',
-      // Tema warna aplikasi
       theme: ThemeData(
-        // Warna utama aplikasi = biru
         primarySwatch: Colors.blue,
       ),
-      // Halaman pertama yang ditampilkan saat app dibuka
       home: const TodoListScreen(),
     );
   }
 }
 
-// Deklarasi class TodoListScreen untuk halaman utama
 class TodoListScreen extends StatefulWidget {
-  // Constructor dengan key parameter untuk best practices
   const TodoListScreen({super.key});
 
-  // Override function build untuk membangun UI halaman
+  @override
+  State<TodoListScreen> createState() => _TodoListScreenState();
+}
+
+class _TodoListScreenState extends State<TodoListScreen> {
+  List<Task> tasks = [];
+  TextEditingController taskController = TextEditingController();
+
+  // Function addTask dengan validasi comprehensive
+  void addTask() {
+    String newTaskTitle = taskController.text.trim();
+
+    if (newTaskTitle.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Task tidak boleh kosong!'),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    bool isDuplicate = tasks.any((task) =>
+    task.title.toLowerCase() == newTaskTitle.toLowerCase());
+
+    if (isDuplicate) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.info, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Task "$newTaskTitle" sudah ada!')),
+            ],
+          ),
+          backgroundColor: Colors.blue,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (newTaskTitle.length > 100) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                  child: Text('Task terlalu panjang! Maksimal 100 karakter.')),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      Task newTask = Task(title: newTaskTitle);
+      tasks.add(newTask);
+    });
+
+    taskController.clear();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Task "$newTaskTitle" berhasil ditambahkan!')),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // Remove task + feedback
+  void removeTask(int index) {
+    Task taskToDelete = tasks[index];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Konfirmasi Hapus"),
+        content: Text(
+          '"${taskToDelete.title}"',
+          style: const TextStyle(
+            fontStyle: FontStyle.italic,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("Batal"),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                tasks.removeAt(index);
+              });
+
+              Navigator.of(ctx).pop();
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.delete, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          child: Text(
+                              'Task "${taskToDelete.title}" dihapus')),
+                    ],
+                  ),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text(
+              "Hapus",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  void toggleTask(int index) {
+    setState(() {
+      tasks[index].toggle();
+    });
+
+    Task task = tasks[index];
+    String message = task.isCompleted
+        ? 'Selamat! Task "${task.title}" selesai! 🎉'
+        : 'Task "${task.title}" ditandai belum selesai';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              task.isCompleted ? Icons.celebration : Icons.undo,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: task.isCompleted ? Colors.green : Colors.blue,
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+
+  Widget _buildStatItem(String label, int count, IconData icon, Color color) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          count.toString(),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    taskController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Return Scaffold sebagai kerangka halaman
     return Scaffold(
-      // AppBar = bar di atas layar
       appBar: AppBar(
-        // Text yang muncul di AppBar
         title: const Text('My To-Do List'),
-        // Warna background AppBar
         backgroundColor: Colors.blue,
       ),
-      // Body = konten utama halaman
-      // Body halaman dengan padding di semua sisi
       body: Padding(
-        // Jarak 16 pixel dari semua tepi layar
         padding: const EdgeInsets.all(16.0),
-        // Column = susun widget anak secara vertikal
         child: Column(
-          // Daftar widget yang disusun vertikal
           children: [
-            // Container = kotak untuk styling dan layout
+            // Input form
             Container(
-              // Padding di dalam container
               padding: const EdgeInsets.all(16.0),
-              // Dekorasi container (warna, bentuk, dll)
               decoration: BoxDecoration(
-                // Warna background abu-abu terang
                 color: Colors.grey[100],
-                // Sudut melengkung dengan radius 12 pixel
                 borderRadius: BorderRadius.circular(12.0),
               ),
-              // Isi container
               child: Column(
-                // Daftar widget di dalam container
                 children: [
-                  // TextField = input field yang bisa diketik user
                   TextField(
-                    // Styling dan decorasi input field
+                    controller: taskController,
+                    textCapitalization: TextCapitalization.sentences,
+                    maxLength: 100,
                     decoration: InputDecoration(
-                      // Text yang muncul saat input kosong
                       hintText: 'Ketik task baru di sini...',
-                      // Border outline di sekitar input
                       border: OutlineInputBorder(
-                        // Sudut border melengkung
                         borderRadius: BorderRadius.circular(8.0),
                       ),
-
-                      // Icon di sebelah kiri input
                       prefixIcon: const Icon(Icons.edit),
+                      counterText: '',
+                      helperText: 'Maksimal 100 karakter',
                     ),
+                    onSubmitted: (value) => addTask(),
                   ),
-                  // Jarak kosong vertikal 12 pixel
                   const SizedBox(height: 12),
-                  // SizedBox untuk mengatur lebar button
                   SizedBox(
-                    // Button ambil lebar penuh container
                     width: double.infinity,
-                    // Button dengan efek elevasi
                     child: ElevatedButton(
-                      // Function yang dijalankan saat button ditekan
-                      onPressed: () {
-                        // Print ke debug console untuk test
-                        debugPrint('Button ditekan!');
-                      },
-                      // Styling button
+                      onPressed: addTask,
                       style: ElevatedButton.styleFrom(
-                        // Warna background button
                         backgroundColor: Colors.blue,
-                        // Warna text/icon button
                         foregroundColor: Colors.white,
-                        // Padding atas-bawah 15 pixel
                         padding: const EdgeInsets.symmetric(vertical: 15),
-                        // Bentuk button dengan sudut bulat
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                       ),
-                      // Isi button
-                      // Isi button: Row untuk susun icon dan text horizontal
-                      child: Row(
-                        // Posisi elemen di tengah Row
+                      child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        // Daftar widget dalam Row
                         children: [
-                          // Icon plus
                           Icon(Icons.add),
-                          // Jarak horizontal 8 pixel antara icon dan text
                           SizedBox(width: 8),
-                          // Text button
                           Text(
                             'Add Task',
-                            // Styling text
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
-                      )
+                      ),
                     ),
                   ),
                 ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            if (tasks.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue[50]!, Colors.blue[100]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Statistik Progress',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[800],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildStatItem(
+                            'Total', tasks.length, Icons.list, Colors.blue),
+                        _buildStatItem(
+                            'Selesai',
+                            tasks.where((t) => t.isCompleted).length,
+                            Icons.check_circle,
+                            Colors.green),
+                        _buildStatItem(
+                            'Belum',
+                            tasks.where((t) => !t.isCompleted).length,
+                            Icons.pending,
+                            Colors.orange),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+            Text(
+              tasks.isEmpty
+                  ? 'Belum ada task. Yuk tambah yang pertama!'
+                  : 'Kamu punya ${tasks.length} tasks',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300, width: 2),
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                child: tasks.isEmpty
+                    ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.inbox_outlined,
+                          size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Belum ada task',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tambahkan task pertamamu di atas!',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                    : ListView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) {
+                    Task task = tasks[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: task.isCompleted
+                              ? Colors.green[50]
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(8.0),
+                          border: task.isCompleted
+                              ? Border.all(
+                              color: Colors.green[200]!, width: 2)
+                              : null,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.2),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Opacity(
+                          opacity: task.isCompleted ? 0.7 : 1.0,
+                          child: ListTile(
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: task.isCompleted
+                                    ? Colors.green[100]
+                                    : Colors.blue[100],
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: task.isCompleted
+                                    ? Icon(Icons.check,
+                                    color: Colors.green[700])
+                                    : Text(
+                                  '${index + 1}',
+                                  style: TextStyle(
+                                    color: Colors.blue[700],
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              task.title,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: task.isCompleted
+                                    ? Colors.grey[600]
+                                    : Colors.black87,
+                                decoration: task.isCompleted
+                                    ? TextDecoration.lineThrough
+                                    : TextDecoration.none,
+                              ),
+                            ),
+                            subtitle: Text(
+                              task.isCompleted
+                                  ? 'Selesai ✅'
+                                  : 'Belum selesai',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: task.isCompleted
+                                    ? Colors.green[600]
+                                    : Colors.grey[600],
+                              ),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    task.isCompleted
+                                        ? Icons.check_circle
+                                        : Icons.radio_button_unchecked,
+                                    color: task.isCompleted
+                                        ? Colors.green[600]
+                                        : Colors.grey[400],
+                                  ),
+                                  onPressed: () => toggleTask(index),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete_outline,
+                                      color: Colors.red[400]),
+                                  onPressed: () => removeTask(index),
+                                ),
+                              ],
+                            ),
+                            onTap: () => toggleTask(index),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ],
@@ -143,6 +541,3 @@ class TodoListScreen extends StatefulWidget {
     );
   }
 }
-
-
-
